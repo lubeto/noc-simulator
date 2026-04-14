@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataCenter NOC — Simulador</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#1c2333;--bor:#2d3748;
+  --tx:#e2e8f0;--tx2:#718096;--tx3:#4a5568;
+  --g:#48bb78;--y:#ecc94b;--r:#fc8181;--b:#63b3ed;--p:#b794f4;--o:#f6ad55;
+  --gd:#1a3a26;--yd:#3d2e0a;--rd:#3d1515;--bd:#1a2e45;--pd:#2d1f45;
+  --mono:'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;min-height:100vh}
+.scr{display:none;min-height:100vh;flex-direction:column}
+.scr.on{display:flex}
+/* LOGIN */
+.login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:1rem;
+  background:radial-gradient(ellipse at 50% 0%,rgba(72,187,120,.08) 0%,transparent 60%)}
+.login-box{background:var(--s1);border:1px solid var(--bor);border-radius:14px;padding:32px;width:100%;max-width:400px}
+.logo{font-family:var(--mono);font-size:11px;color:var(--g);letter-spacing:.1em;margin-bottom:8px}
+.login-title{font-size:20px;font-weight:700;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--tx2);margin-bottom:24px}
+.sep{border:none;border-top:1px solid var(--bor);margin:16px 0}
+/* ROLE CARDS */
+.role-card{width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;
+  background:var(--s2);border:1px solid var(--bor);border-radius:10px;
+  cursor:pointer;text-align:left;color:var(--tx);font-family:inherit;margin-bottom:8px;transition:.15s}
+.role-card:hover{border-color:var(--g);background:var(--s1)}
+.role-icon{font-size:26px;flex-shrink:0}
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--bor);padding:9px 16px;
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:8px}
+/* TABS */
+.tabbar{background:var(--s1);border-bottom:1px solid var(--bor);display:flex;
+  padding:0 12px;overflow-x:auto;flex-shrink:0}
+.tabbar::-webkit-scrollbar{display:none}
+.tab{padding:10px 13px;cursor:pointer;font-size:12px;color:var(--tx2);font-weight:500;
+  border:none;border-bottom:2px solid transparent;background:none;
+  font-family:inherit;white-space:nowrap;transition:.1s}
+.tab.on{color:var(--g);border-bottom-color:var(--g)}
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:14px}
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--bor);border-radius:10px;padding:13px 15px;margin-bottom:10px}
+.mcard{background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px}
+/* BADGES */
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;
+  font-weight:700;font-family:var(--mono);letter-spacing:.03em}
+.ok{background:var(--gd);color:var(--g)}
+.warn{background:var(--yd);color:var(--y)}
+.crit{background:var(--rd);color:var(--r)}
+.info{background:var(--bd);color:var(--b)}
+.inst{background:var(--pd);color:var(--p)}
+/* PROGRESS BARS */
+.bar-wrap{height:4px;background:var(--bor);border-radius:2px;overflow:hidden;margin-top:4px}
+.bar{height:100%;border-radius:2px;transition:width .6s}
+.bg{background:var(--g)}.by{background:var(--y)}.br{background:var(--r)}
+/* GRIDS */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+/* FORMS */
+input,textarea,select{width:100%;background:var(--s2);border:1px solid var(--bor);
+  border-radius:7px;padding:8px 11px;color:var(--tx);font-size:13px;font-family:inherit;outline:none}
+input:focus,textarea:focus{border-color:var(--g)}
+label{font-size:11px;color:var(--tx2);display:block;margin-bottom:4px;font-weight:500;letter-spacing:.03em}
+.mt{margin-top:12px}
+/* BUTTONS */
+.btn{padding:7px 14px;cursor:pointer;border-radius:7px;font-size:12px;
+  font-family:inherit;font-weight:500;border:1px solid var(--bor);
+  background:var(--s2);color:var(--tx);transition:.1s}
+.btn:hover:not(:disabled){border-color:var(--tx2)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-g{background:var(--gd);border-color:var(--g);color:var(--g)}
+.btn-r{background:var(--rd);border-color:var(--r);color:var(--r)}
+.btn-y{background:var(--yd);border-color:var(--y);color:var(--y)}
+.btn-b{background:var(--bd);border-color:var(--b);color:var(--b)}
+/* ALERTS */
+.alert-item{display:flex;gap:8px;padding:9px 11px;border-radius:7px;
+  background:var(--s2);margin-bottom:7px;border-left:3px solid transparent;align-items:flex-start}
+.al-c{border-left-color:var(--r)}.al-w{border-left-color:var(--y)}.al-i{border-left-color:var(--b)}
+.adot{width:7px;height:7px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.dc{background:var(--r)}.dw{background:var(--y)}.di{background:var(--b)}
+/* CHAT */
+.chatbox{height:230px;overflow-y:auto;background:var(--s2);border:1px solid var(--bor);
+  border-radius:8px;padding:8px;margin-bottom:8px;display:flex;flex-direction:column;gap:5px}
+.chatbox::-webkit-scrollbar{width:3px}
+.chatbox::-webkit-scrollbar-thumb{background:var(--bor)}
+.cm{padding:6px 10px;border-radius:7px;font-size:12px;max-width:84%;word-break:break-word;line-height:1.5}
+.cm-me{background:var(--gd);color:var(--g);align-self:flex-end}
+.cm-other{background:var(--s1);border:1px solid var(--bor);align-self:flex-start}
+.cm-inst{background:var(--bd);color:var(--b);align-self:flex-start}
+.cm-sys{background:rgba(183,148,244,.12);color:var(--p);align-self:center;font-size:11px;padding:3px 10px;border-radius:20px;font-family:var(--mono)}
+/* MISC */
+.live{width:7px;height:7px;border-radius:50%;background:var(--g);display:inline-block;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.sec{display:none}.sec.on{display:block}
+.srow{display:flex;justify-content:space-between;font-size:12px;margin-top:5px;align-items:center}
+.sl{color:var(--tx2)}.sv{font-family:var(--mono);font-size:11px;font-weight:600}
+.nrow{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bor);font-size:12px}
+.nrow:last-child{border:none}
+.scen-card{border:1px solid var(--bor);border-radius:10px;padding:14px;margin-bottom:10px;transition:.15s}
+.scen-on{border-color:var(--r);background:rgba(252,129,129,.03)}
+.mission{display:flex;gap:11px;padding:12px;background:var(--s2);border:1px solid var(--bor);border-radius:8px;margin-bottom:8px}
+.h2{font-size:15px;font-weight:700;margin-bottom:3px}
+.sub{font-size:12px;color:var(--tx2);margin-bottom:12px;line-height:1.6}
+/* WIKI */
+.wiki-item{background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:12px;margin-bottom:8px}
+.wiki-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;background:var(--pd);color:var(--p);font-family:var(--mono);margin-right:4px;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="scr-login" class="scr on">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="logo">[ NOC SIMULATOR v3.0 ]</div>
+      <div class="login-title">Centro de Datos</div>
+      <div class="login-sub">Plataforma de monitoreo simulado para aprendices</div>
+      <hr class="sep">
+      <div id="step-role">
+        <label>Código de sala (lo define el instructor)</label>
+        <input id="inp-room" type="text" placeholder="Ej: SENA-NOC-01" style="margin-bottom:14px;font-family:var(--mono);text-transform:uppercase">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;font-weight:500">ROL</div>
+        <button class="role-card" onclick="selRole('learner')">
+          <span class="role-icon">🎓</span>
+          <div><div style="font-weight:700;font-size:13px">Aprendiz</div><div style="font-size:11px;color:var(--tx2);margin-top:2px">Panel de monitoreo, misiones, reporte y chat</div></div>
+        </button>
+        <button class="role-card" onclick="selRole('instructor')">
+          <span class="role-icon">🧑‍🏫</span>
+          <div><div style="font-weight:700;font-size:13px">Instructor</div><div style="font-size:11px;color:var(--tx2);margin-top:2px">Control de alertas, escenarios y reportes</div></div>
+        </button>
+      </div>
+      <div id="step-pwd" style="display:none">
+        <label>Contraseña de instructor</label>
+        <input id="inp-pwd" type="password" placeholder="Contraseña..." onkeydown="if(event.key==='Enter')chkPwd()" style="margin-bottom:8px">
+        <div id="pwd-err" style="color:var(--r);font-size:11px;margin-bottom:8px;display:none">Incorrecta. Clave: <code>monitor2024</code></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="back('step-role','step-pwd')">Atrás</button>
+          <button class="btn btn-g" onclick="chkPwd()">Continuar →</button>
+        </div>
+      </div>
+      <div id="step-name" style="display:none">
+        <label id="name-label">Tu nombre</label>
+        <input id="inp-name" type="text" placeholder="Escribe tu nombre..." onkeydown="if(event.key==='Enter')enter()" style="margin-bottom:8px">
+        <button class="btn btn-g" onclick="enter()" style="width:100%">Entrar al sistema →</button>
+      </div>
+      <div style="margin-top:18px;background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;font-weight:700;color:var(--tx2);letter-spacing:.05em;margin-bottom:6px;font-family:var(--mono)">MODO MULTI-DISPOSITIVO</div>
+        <div style="font-size:11px;color:var(--tx2);line-height:1.6">Para que aprendices en <strong style="color:var(--tx)">diferentes dispositivos</strong> se conecten, pega tu URL de Firebase:</div>
+        <input id="inp-fb" type="text" placeholder="https://mi-app-default-rtdb.firebaseio.com (opcional)" style="margin-top:6px;font-size:11px;font-family:var(--mono)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APRENDIZ ══════════ -->
+<div id="scr-learner" class="scr">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="live"></span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--g);font-weight:700">NOC ACTIVO</span>
+      <span id="L-scbadge" class="badge crit" style="display:none;animation:pulse 1s infinite"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end">
+      <span id="L-uname" style="font-size:11px;color:var(--tx2);font-family:var(--mono)"></span>
+      <span style="font-size:12px;color:var(--tx2)">Sala: <span id="L-room" style="color:var(--g);font-family:var(--mono)"></span></span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="font-size:11px;color:var(--tx2)">PTS</span>
+        <span id="L-pts" style="font-weight:700;color:var(--g);font-family:var(--mono);font-size:15px">0</span>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <button class="tab on" onclick="ltab('dash',this)">Dashboard</button>
+    <button class="tab" onclick="ltab('alerts',this)">Alertas <span id="L-acnt" class="badge crit" style="display:none">0</span></button>
+    <button class="tab" onclick="ltab('missions',this)">Misiones</button>
+    <button class="tab" onclick="ltab('wiki',this)">Wiki</button>
+    <button class="tab" onclick="ltab('report',this)">Reporte</button>
+    <button class="tab" onclick="ltab('chat',this)">Chat <span id="L-cdot" style="width:6px;height:6px;border-radius:50%;background:var(--r);display:none;margin-left:2px;vertical-align:middle"></span></button>
+  </div>
+  <div class="content">
+    <!-- DASHBOARD -->
+    <div id="L-dash" class="sec on">
+      <div class="g4" style="margin-bottom:12px">
+        <div class="mcard"><div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.05em">SERVIDORES</div><div style="font-size:22px;font-weight:700;color:var(--g);font-family:var(--mono)">4/4</div></div>
+        <div class="mcard"><div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.05em">ALERTAS</div><div id="L-salerts" style="font-size:22px;font-weight:700;font-family:var(--mono)">0</div></div>
+        <div class="mcard"><div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.05em">CPU PROM.</div><div id="L-scpu" style="font-size:22px;font-weight:700;font-family:var(--mono)">--%</div></div>
+        <div class="mcard"><div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.05em">TEMP PROM.</div><div id="L-stemp" style="font-size:22px;font-weight:700;font-family:var(--mono)">--°C</div></div>
+      </div>
+      <div class="g2" id="L-srvgrid"></div>
+      <div class="card" style="margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--b);font-family:var(--mono);letter-spacing:.05em;margin-bottom:10px">▶ MÉTRICAS DE RED</div>
+        <div id="L-netgrid"></div>
+      </div>
+    </div>
+    <!-- ALERTS -->
+    <div id="L-alerts" class="sec">
+      <div class="h2">Alertas activas</div>
+      <div class="sub">Resuelve alertas para ganar puntos. Las del instructor están marcadas en morado.</div>
+      <div id="L-alist"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--tx2);font-family:var(--mono);letter-spacing:.05em;margin:14px 0 6px">HISTORIAL — RESUELTAS</div>
+      <div id="L-hist"></div>
+    </div>
+    <!-- MISSIONS -->
+    <div id="L-missions" class="sec">
+      <div class="h2">Misiones de monitoreo</div>
+      <div class="sub">Completa cada actividad para demostrar tus habilidades. Los puntos se suman automáticamente.</div>
+      <div id="L-mlist"></div>
+    </div>
+    <!-- WIKI -->
+    <div id="L-wiki" class="sec">
+      <div class="h2">Wiki colaborativa</div>
+      <div class="sub">Documenta conceptos, procedimientos y hallazgos que ayuden a todo el equipo.</div>
+      <div class="card">
+        <label>Título del artículo</label>
+        <input id="wiki-title" type="text" placeholder="Ej: Procedimiento ante alta CPU" style="margin-bottom:8px">
+        <label class="mt">Categoría</label>
+        <select id="wiki-cat" style="margin-bottom:8px">
+          <option value="procedimiento">Procedimiento</option>
+          <option value="definicion">Definición</option>
+          <option value="incidente">Incidente documentado</option>
+          <option value="tip">Tip / Buena práctica</option>
+        </select>
+        <label class="mt">Contenido</label>
+        <textarea id="wiki-body" rows="4" placeholder="Escribe el contenido aquí..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-g" onclick="publishWiki()">Publicar en wiki</button>
+        </div>
+        <div id="wiki-ok" style="color:var(--g);font-size:11px;font-family:var(--mono);margin-top:6px;display:none">✓ Artículo publicado</div>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--tx2);font-family:var(--mono);letter-spacing:.05em;margin:4px 0 8px">ARTÍCULOS DEL EQUIPO</div>
+      <div id="wiki-list"><div style="font-size:12px;color:var(--tx2)">Aún no hay artículos. ¡Sé el primero en publicar!</div></div>
+    </div>
+    <!-- REPORT -->
+    <div id="L-report" class="sec">
+      <div class="h2">Reporte de turno</div>
+      <div class="sub">Documenta tus hallazgos y envíalos al instructor. También puedes exportar como PDF.</div>
+      <div class="card">
+        <label>Resumen del turno</label>
+        <textarea id="r-sum" rows="2" placeholder="¿Qué observaste durante este turno de monitoreo?"></textarea>
+        <label class="mt">Incidentes documentados</label>
+        <textarea id="r-inc" rows="4" placeholder="Servidor afectado → tipo de alerta → acción tomada → resultado..."></textarea>
+        <label class="mt">Recomendaciones</label>
+        <textarea id="r-rec" rows="2" placeholder="¿Qué cambios propones para prevenir estos incidentes?"></textarea>
+        <label class="mt">Nivel de dificultad percibido</label>
+        <select id="r-diff">
+          <option value="Básico">Básico — sin mayores complicaciones</option>
+          <option value="Moderado" selected>Moderado — algunos retos resueltos</option>
+          <option value="Alto">Alto — escenario complejo</option>
+          <option value="Muy alto">Muy alto — varios incidentes simultáneos</option>
+        </select>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-g" onclick="submitRpt()">Enviar al instructor</button>
+          <button class="btn btn-b" onclick="exportPDF()">Exportar PDF</button>
+        </div>
+        <div id="r-ok" style="color:var(--g);font-size:12px;font-family:var(--mono);margin-top:8px;display:none">✓ Reporte enviado</div>
+      </div>
+    </div>
+    <!-- CHAT -->
+    <div id="L-chat" class="sec">
+      <div class="h2">Chat del equipo</div>
+      <div class="sub">Comunícate en tiempo real con tus compañeros y el instructor.</div>
+      <div class="chatbox" id="L-cbox"></div>
+      <div style="display:flex;gap:8px">
+        <input id="L-cinp" type="text" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn btn-g" onclick="sendChat()">Enviar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ INSTRUCTOR ══════════ -->
+<div id="scr-instructor" class="scr">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--b)">■ PANEL INSTRUCTOR</span>
+      <span id="I-uname" class="badge inst"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:11px;color:var(--tx2)">Sala: <span id="I-room" style="color:var(--g);font-family:var(--mono)"></span></span>
+      <div id="I-scen-active" style="display:none" class="badge crit" style="animation:pulse 1s infinite"></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <button class="tab on" onclick="itab('trg',this)">Disparar alertas</button>
+    <button class="tab" onclick="itab('scn',this)">Escenarios</button>
+    <button class="tab" onclick="itab('rpts',this)">Reportes <span id="I-rcnt" class="badge info" style="display:none">0</span></button>
+    <button class="tab" onclick="itab('wiki',this)">Wiki</button>
+    <button class="tab" onclick="itab('icht',this)">Chat</button>
+  </div>
+  <div class="content">
+    <!-- TRIGGER ALERTS -->
+    <div id="I-trg" class="sec on">
+      <div class="h2">Alertas manuales</div>
+      <div class="sub">Aparecen inmediatamente en el panel de <strong>todos los aprendices</strong> en esta sala.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="I-tbtns"></div>
+      <div style="margin-top:16px;font-size:10px;font-weight:700;color:var(--tx2);font-family:var(--mono);letter-spacing:.05em;margin-bottom:8px">ÚLTIMAS DISPARADAS</div>
+      <div id="I-tlog"></div>
+    </div>
+    <!-- SCENARIOS -->
+    <div id="I-scn" class="sec">
+      <div class="h2">Escenarios guionizados</div>
+      <div class="sub">Activa un escenario completo. Las métricas de todos los aprendices cambiarán automáticamente para simular el incidente.</div>
+      <div id="I-slist"></div>
+    </div>
+    <!-- REPORTS -->
+    <div id="I-rpts" class="sec">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="h2" style="margin:0">Reportes de aprendices</div>
+        <button class="btn" style="font-size:11px" onclick="loadRpts()">↻ Actualizar</button>
+      </div>
+      <div id="I-rlist"><div class="sub">Sin reportes aún.</div></div>
+    </div>
+    <!-- WIKI (instructor view) -->
+    <div id="I-wiki" class="sec">
+      <div class="h2">Wiki del equipo</div>
+      <div class="sub">Artículos publicados por los aprendices. Puedes moderar o añadir entradas de referencia.</div>
+      <div class="card">
+        <label>Agregar entrada de referencia</label>
+        <input id="Iwiki-title" type="text" placeholder="Título..." style="margin-bottom:8px">
+        <select id="Iwiki-cat" style="margin-bottom:8px">
+          <option value="referencia">Referencia técnica</option>
+          <option value="procedimiento">Procedimiento oficial</option>
+          <option value="glosario">Glosario</option>
+        </select>
+        <textarea id="Iwiki-body" rows="3" placeholder="Contenido..."></textarea>
+        <button class="btn btn-b" onclick="publishIWiki()" style="margin-top:8px">Publicar</button>
+      </div>
+      <div id="I-wiki-list"><div class="sub">Sin artículos aún.</div></div>
+    </div>
+    <!-- CHAT -->
+    <div id="I-icht" class="sec">
+      <div class="h2">Chat con aprendices</div>
+      <div class="sub">Tus mensajes aparecen resaltados para que los aprendices te identifiquen fácilmente.</div>
+      <div class="chatbox" id="I-cbox"></div>
+      <div style="display:flex;gap:8px">
+        <input id="I-cinp" type="text" placeholder="Mensaje para los aprendices..." onkeydown="if(event.key==='Enter')sendIChat()">
+        <button class="btn btn-g" onclick="sendIChat()">Enviar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+//  CONFIG & STATE
+// ═══════════════════════════════════
+let mode='local',fbUrl='',roomId='',role='',uname='';
+let pts=0,aid=0;
+let activeAlerts=[],resolvedAlerts=[],mDone={},chatMsgs=[],wikiArticles=[];
+let lastChatN=0,curTab='dash',iAlertsDone=0,acvScen=null,iLog=[];
+
+const KEY_CHAT='noc_chat',KEY_IALERTS='noc_ialerts',KEY_SCENARIO='noc_scenario';
+const KEY_REPORTS='noc_reports',KEY_WIKI='noc_wiki';
+
+// ═══════════════════════════════════
+//  SERVERS & NETWORK
+// ═══════════════════════════════════
+const srvs=[
+  {id:'SRV-01',name:'SRV-01 Web',role:'Servidor web principal',cpu:45,ram:60,temp:52,disk:70},
+  {id:'SRV-02',name:'SRV-02 DB',role:'Base de datos principal',cpu:30,ram:75,temp:48,disk:85},
+  {id:'SRV-03',name:'SRV-03 Backup',role:'Respaldo y almacenamiento',cpu:12,ram:40,temp:44,disk:60},
+  {id:'SRV-04',name:'SRV-04 App',role:'Servidor de aplicaciones',cpu:55,ram:68,temp:56,disk:45}
+];
+const net=[
+  {n:'BW entrante',v:340,u:'Mbps',k:'bi'},
+  {n:'BW saliente',v:120,u:'Mbps',k:'bo'},
+  {n:'Latencia promedio',v:8,u:'ms',k:'la'},
+  {n:'Pérdida de paquetes',v:0.1,u:'%',k:'pk'},
+  {n:'Conexiones activas',v:1240,u:'',k:'cn'}
+];
+
+// ═══════════════════════════════════
+//  SCENARIOS
+// ═══════════════════════════════════
+const scenarios=[
+  {
+    id:'ddos',icon:'🌊',name:'Ataque DDoS',color:'var(--r)',
+    desc:'El servidor web recibe una ola masiva de tráfico malicioso. El ancho de banda se satura, la latencia escala a niveles críticos y los servidores web llegan al límite de su CPU.',
+    steps:['BW entrante → 950 Mbps (normal: 340)','Latencia → 180 ms (umbral: 50)','Conexiones simultáneas → 8.900','CPU SRV-01 y SRV-04 → 95%+'],
+    hints:['Verifica el ancho de banda en el panel de red','Los servidores web son los primeros afectados','Acción: activar CDN / filtrar tráfico en firewall'],
+    apply(){net[0].v=950;net[2].v=180;net[3].v=4.2;net[4].v=8900;srvs[0].cpu=96;srvs[3].cpu=93;}
+  },
+  {
+    id:'disk',icon:'💾',name:'Fallo de disco — SRV-02',color:'var(--y)',
+    desc:'El disco del servidor de base de datos llega al 99%. Las escrituras comienzan a fallar y hay riesgo de corrupción de datos y pérdida de servicio.',
+    steps:['SRV-02 disco → 99%','CPU SRV-02 → 88% (escrituras lentas)','Alertas de I/O error en base de datos'],
+    hints:['Revisa el % de disco en el servidor DB','Acción: limpiar logs / ampliar volumen / migrar datos','Prioridad ALTA: la BD puede caer'],
+    apply(){srvs[1].disk=99;srvs[1].cpu=88;}
+  },
+  {
+    id:'heat',icon:'🌡️',name:'Sobrecalentamiento — SRV-01',color:'var(--o)',
+    desc:'El sistema de refrigeración de SRV-01 falla. La temperatura sube progresivamente. Si llega a 90°C el servidor realizará un apagado de emergencia.',
+    steps:['Sistema de cooling degradado','SRV-01 temp → 88°C y subiendo','Riesgo de apagado automático a 90°C'],
+    hints:['Monitorea la temperatura cada ciclo','Acción: migrar servicios a SRV-04 / contactar soporte físico','Umbral crítico: 85°C = CRÍTICO, 90°C = APAGADO'],
+    apply(){srvs[0].temp=88;srvs[0].cpu=70;}
+  }
+];
+
+// ═══════════════════════════════════
+//  MANUAL ALERTS (instructor)
+// ═══════════════════════════════════
+const manualAlerts=[
+  {l:'CPU crítico — SRV-01',t:'crit',m:'CPU de SRV-01 al 95% — saturación inminente',p:35},
+  {l:'Temperatura alta — SRV-04',t:'crit',m:'SRV-04 a 87°C — riesgo de apagado automático',p:40},
+  {l:'Disco lleno — SRV-02',t:'crit',m:'Disco SRV-02 al 99% — escrituras fallando',p:35},
+  {l:'RAM alta — SRV-03',t:'warn',m:'RAM SRV-03 al 92% — posible fuga de memoria',p:20},
+  {l:'Latencia de red alta',t:'warn',m:'Latencia: 120 ms — umbral: 50 ms',p:20},
+  {l:'Pérdida de paquetes',t:'crit',m:'Pérdida de paquetes: 5.8% — posible fallo de enlace',p:40},
+  {l:'HTTP sin respuesta — SRV-01',t:'crit',m:'SRV-01: servicio web no responde — timeout 30 s',p:45},
+  {l:'Backup fallido — SRV-03',t:'warn',m:'Respaldo nocturno falló en SRV-03 — revisar logs',p:15},
+  {l:'Uso eléctrico del rack',t:'warn',m:'Rack A consumo eléctrico al 88% — riesgo de corte',p:20},
+  {l:'Certificado SSL expirado',t:'warn',m:'Cert. SSL de dominio principal vence en 3 días',p:15}
+];
+
+// ═══════════════════════════════════
+//  MISSIONS
+// ═══════════════════════════════════
+const missions=[
+  {id:'m1',i:'🔍',t:'Identificar servidor más cargado',d:'Revisa el panel y determina cuál servidor tiene mayor uso de CPU en este momento.',p:50,chk:()=>mDone.m1},
+  {id:'m2',i:'🚨',t:'Resolver 3 alertas consecutivas',d:'Atiende y resuelve al menos 3 alertas en la pestaña de Alertas.',p:80,chk:()=>resolvedAlerts.length>=3},
+  {id:'m3',i:'🌐',t:'Detectar anomalía de red',d:'Identifica una métrica de red fuera de su umbral normal en el panel de red.',p:60,chk:()=>mDone.m3},
+  {id:'m4',i:'📋',t:'Enviar reporte documentado',d:'Completa y envía un reporte de turno con al menos un incidente al instructor.',p:70,chk:()=>mDone.m4},
+  {id:'m5',i:'🛡️',t:'Sobrevivir escenario activo',d:'Resuelve alertas mientras un escenario crítico del instructor está activo.',p:120,chk:()=>mDone.m5},
+  {id:'m6',i:'📖',t:'Publicar en la wiki del equipo',d:'Documenta un concepto, procedimiento o hallazgo en la wiki colaborativa.',p:40,chk:()=>mDone.m6}
+];
+
+// ═══════════════════════════════════
+//  DOM HELPERS
+// ═══════════════════════════════════
+const $=id=>document.getElementById(id);
+const sh=id=>$(id)&&($(id).style.display='block');
+const hi=id=>$(id)&&($(id).style.display='none');
+const mono=v=>v%1!==0?v.toFixed(1):Math.round(v);
+function setScreen(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');}
+function back(show,hide){sh(show);hi(hide);hi('pwd-err');}
+
+// ═══════════════════════════════════
+//  STORAGE (Firebase REST or localStorage)
+// ═══════════════════════════════════
+function lk(k){return `noc_${roomId}_${k}`;}
+async function dbGet(k){
+  if(mode==='firebase'){
+    try{const r=await fetch(`${fbUrl}/rooms/${roomId}/${k}.json`);if(!r.ok)return null;const d=await r.json();return d;}
+    catch{return null;}
+  }
+  try{return JSON.parse(localStorage.getItem(lk(k)));}catch{return null;}
+}
+async function dbSet(k,v){
+  if(mode==='firebase'){
+    try{await fetch(`${fbUrl}/rooms/${roomId}/${k}.json`,{method:'PUT',body:JSON.stringify(v),headers:{'Content-Type':'application/json'}});}
+    catch{}
+  }else{
+    localStorage.setItem(lk(k),JSON.stringify(v));
+    try{new BroadcastChannel(`noc_${roomId}`).postMessage(1);}catch{}
+  }
+}
+async function dbPush(k,v,max=120){
+  const arr=(await dbGet(k))||[];arr.push(v);
+  if(arr.length>max)arr.splice(0,arr.length-max);
+  await dbSet(k,arr);
+}
+
+// ═══════════════════════════════════
+//  LOGIN FLOW
+// ═══════════════════════════════════
+function selRole(r){
+  roomId=($('inp-room').value.trim()||'DEMO').toUpperCase().replace(/\s+/g,'-');
+  const fb=$('inp-fb').value.trim();
+  if(fb){fbUrl=fb.replace(/\/+$/,'');mode='firebase';}
+  hi('step-role');
+  if(r==='instructor'){$('inp-pwd').value='';sh('step-pwd');$('inp-pwd').focus();}
+  else{$('step-name').dataset.role='learner';$('name-label').textContent='Tu nombre';sh('step-name');$('inp-name').focus();}
+}
+function chkPwd(){
+  if($('inp-pwd').value==='monitor2024'){hi('step-pwd');$('step-name').dataset.role='instructor';$('name-label').textContent='Tu nombre (instructor)';sh('step-name');$('inp-name').focus();}
+  else sh('pwd-err');
+}
+function enter(){
+  uname=$('inp-name').value.trim()||'Usuario';
+  role=$('step-name').dataset.role;
+  if(role==='learner'){setScreen('scr-learner');$('L-uname').textContent=uname;$('L-room').textContent=roomId;initLearner();}
+  else{setScreen('scr-instructor');$('I-uname').textContent=uname;$('I-room').textContent=roomId;initInstructor();}
+}
+
+// ═══════════════════════════════════
+//  LEARNER TABS
+// ═══════════════════════════════════
+function ltab(t,el){
+  document.querySelectorAll('#scr-learner .sec').forEach(s=>s.classList.remove('on'));
+  $('L-'+t).classList.add('on');
+  document.querySelectorAll('#scr-learner .tab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');curTab=t;
+  if(t==='missions')rMissions();
+  if(t==='wiki')pollWiki();
+  if(t==='chat'){$('L-cdot').style.display='none';lastChatN=chatMsgs.length;rChat('L-cbox');}
+}
+
+// ═══════════════════════════════════
+//  SERVERS RENDER
+// ═══════════════════════════════════
+function pc(v){return v>=85?'br':v>=65?'by':'bg';}
+function bc(v){return v>=85?'crit':v>=65?'warn':'ok';}
+function rSrvs(){
+  const g=$('L-srvgrid');if(!g)return;
+  g.innerHTML=srvs.map(s=>{
+    const c=Math.round(s.cpu),r=Math.round(s.ram),t=Math.round(s.temp),d=Math.round(s.disk);
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--g)">${s.name}</div><div style="font-size:10px;color:var(--tx2);margin-top:1px">${s.role}</div></div>
+        <span class="badge ok">ONLINE</span>
+      </div>
+      <div class="srow"><span class="sl">CPU</span><span class="sv ${bc(c)}">${c}%</span></div>
+      <div class="bar-wrap"><div class="bar ${pc(c)}" style="width:${c}%"></div></div>
+      <div class="srow"><span class="sl">RAM</span><span class="sv ${bc(r)}">${r}%</span></div>
+      <div class="bar-wrap"><div class="bar ${pc(r)}" style="width:${r}%"></div></div>
+      <div class="srow"><span class="sl">Temp.</span><span class="sv" style="color:${t>=75?'var(--r)':t>=60?'var(--y)':'var(--tx)'}">${t} °C</span></div>
+      <div class="srow"><span class="sl">Disco</span><span class="sv ${bc(d)}">${d}%</span></div>
+    </div>`;
+  }).join('');
+}
+function rNet(){
+  const g=$('L-netgrid');if(!g)return;
+  g.innerHTML=net.map(m=>{
+    let c='var(--tx)';
+    if(m.k==='la'&&m.v>50)c='var(--y)';
+    if((m.k==='pk'&&m.v>2)||(m.k==='bi'&&m.v>800))c='var(--r)';
+    if(m.k==='cn'&&m.v>5000)c='var(--y)';
+    return `<div class="nrow"><span style="color:var(--tx2)">${m.n}</span><span style="font-family:var(--mono);font-weight:700;color:${c}">${mono(m.v)} ${m.u}</span></div>`;
+  }).join('');
+}
+function updSum(){
+  const ac=Math.round(srvs.reduce((a,s)=>a+s.cpu,0)/srvs.length);
+  const at=Math.round(srvs.reduce((a,s)=>a+s.temp,0)/srvs.length);
+  ['L-scpu','L-stemp','L-salerts','L-acnt'].forEach(id=>{
+    const e=$(id);if(!e)return;
+    if(id==='L-scpu')e.textContent=ac+'%';
+    if(id==='L-stemp')e.textContent=at+'°C';
+    if(id==='L-salerts')e.textContent=activeAlerts.length;
+    if(id==='L-acnt'){e.textContent=activeAlerts.length;e.style.display=activeAlerts.length?'inline':'none';}
+  });
+  if(net[2].v>50||net[3].v>2||net[0].v>800)mDone.m3=true;
+}
+function fluctuate(){
+  srvs.forEach(s=>{
+    s.cpu=Math.max(5,Math.min(99,s.cpu+(Math.random()-.44)*9));
+    s.ram=Math.max(20,Math.min(97,s.ram+(Math.random()-.47)*4));
+    s.temp=Math.max(38,Math.min(93,s.temp+(Math.random()-.46)*3));
+    s.disk=Math.max(10,Math.min(99,s.disk+(Math.random()-.49)*1.3));
+  });
+  net.forEach(m=>m.v=Math.max(0,m.v*(1+(Math.random()-.45)*.12)));
+  rSrvs();rNet();updSum();
+}
+
+// ═══════════════════════════════════
+//  ALERTS
+// ═══════════════════════════════════
+const autoTpl=[
+  {t:'crit',m:s=>`CPU de ${s} supera el 90% — riesgo de saturación`,p:30,srv:true},
+  {t:'crit',m:s=>`Temperatura crítica en ${s}: por encima de 80°C`,p:35,srv:true},
+  {t:'warn',m:s=>`Disco de ${s} al 87% de capacidad`,p:20,srv:true},
+  {t:'warn',m:s=>`RAM de ${s} al 90% — posible fuga de memoria`,p:25,srv:true},
+  {t:'warn',m:()=>'Latencia de red: 98 ms — umbral recomendado: 50 ms',p:20,srv:false},
+  {t:'info',m:s=>`Respaldo completado exitosamente en ${s}`,p:10,srv:true}
+];
+function autoAlert(){
+  if(activeAlerts.length>=8)return;
+  const tpl=autoTpl[Math.floor(Math.random()*autoTpl.length)];
+  const srv=tpl.srv?srvs[Math.floor(Math.random()*srvs.length)].id:null;
+  pushAlert({t:tpl.t,msg:srv?tpl.m(srv):tpl.m(),pts:tpl.p,src:'auto'});
+}
+function pushAlert(a){
+  a.id=++aid;a.time=new Date().toLocaleTimeString('es-CO');
+  activeAlerts.push(a);rAlerts();updSum();
+}
+function rAlerts(){
+  const el=$('L-alist');if(!el)return;
+  if(!activeAlerts.length){
+    el.innerHTML='<div style="color:var(--tx2);text-align:center;padding:2rem;font-family:var(--mono);font-size:12px">[ SISTEMA ESTABLE — SIN ALERTAS ]</div>';return;
+  }
+  el.innerHTML=activeAlerts.map(a=>`<div class="alert-item al-${a.t==='info'?'i':a.t[0]}">
+    <div class="adot d${a.t==='info'?'i':a.t[0]}"></div>
+    <div style="flex:1;font-size:12px">
+      <div>${a.msg}</div>
+      <div style="font-size:10px;color:var(--tx2);margin-top:2px;font-family:var(--mono)">${a.time}${a.src==='inst'?' · <span style="color:var(--p)">★ INSTRUCTOR</span>':''}</div>
+    </div>
+    <span class="badge ${a.t==='crit'?'crit':a.t==='warn'?'warn':'info'}" style="white-space:nowrap">${a.t.toUpperCase()}</span>
+    &nbsp;
+    <button class="badge ok" style="cursor:pointer;border:none;font-size:11px;padding:3px 9px" onclick="resolveA(${a.id})">Resolver +${a.pts}pts</button>
+  </div>`).join('');
+}
+function resolveA(id){
+  const i=activeAlerts.findIndex(a=>a.id===id);if(i===-1)return;
+  const a=activeAlerts.splice(i,1)[0];
+  resolvedAlerts.unshift(a);pts+=a.pts;$('L-pts').textContent=pts;
+  rAlerts();updSum();
+  const rl=$('L-hist');
+  if(rl)rl.innerHTML=resolvedAlerts.slice(0,6).map(r=>`<div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:11px;background:var(--s2);border-radius:4px;margin-bottom:4px;font-family:var(--mono)"><span style="color:var(--tx2)">${r.msg}</span><span style="color:var(--g)">+${r.pts}</span></div>`).join('');
+  chkM();
+  if(acvScen&&resolvedAlerts.some(r=>r.src==='inst'))mDone.m5=true;
+}
+
+// ═══════════════════════════════════
+//  MISSIONS
+// ═══════════════════════════════════
+function rMissions(){
+  const el=$('L-mlist');if(!el)return;
+  el.innerHTML=missions.map(m=>{
+    const done=m.chk();
+    return `<div class="mission" style="${done?'opacity:.55':''}">
+      <div style="width:36px;height:36px;border-radius:8px;background:${done?'var(--gd)':'var(--s1)'};border:1px solid ${done?'var(--g)':'var(--bor)'};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">${done?'✓':m.i}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${m.t}</div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:2px;line-height:1.5">${m.d}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <span style="font-size:11px;color:var(--tx2)">Recompensa: <strong style="color:var(--g)">+${m.p} pts</strong></span>
+          ${done?'<span class="badge ok">COMPLETADA</span>':'<span style="font-size:10px;color:var(--tx3);font-family:var(--mono)">PENDIENTE</span>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function chkM(){
+  missions.forEach(m=>{
+    if(!mDone['d_'+m.id]&&m.chk()){mDone['d_'+m.id]=true;pts+=m.p;$('L-pts').textContent=pts;}
+  });
+  if(curTab==='missions')rMissions();
+}
+
+// ═══════════════════════════════════
+//  WIKI
+// ═══════════════════════════════════
+async function publishWiki(){
+  const t=$('wiki-title').value.trim(),c=$('wiki-cat').value,b=$('wiki-body').value.trim();
+  if(!t||!b)return;
+  const art={author:uname,cat:c,title:t,body:b,ts:Date.now(),time:new Date().toLocaleString('es-CO')};
+  await dbPush(KEY_WIKI,art,100);
+  $('wiki-title').value='';$('wiki-body').value='';
+  $('wiki-ok').style.display='block';setTimeout(()=>$('wiki-ok').style.display='none',2500);
+  mDone.m6=true;chkM();
+  pollWiki();
+}
+async function publishIWiki(){
+  const t=$('Iwiki-title').value.trim(),c=$('Iwiki-cat').value,b=$('Iwiki-body').value.trim();
+  if(!t||!b)return;
+  const art={author:uname+'★',cat:c,title:t,body:b,ts:Date.now(),time:new Date().toLocaleString('es-CO'),isInst:true};
+  await dbPush(KEY_WIKI,art,100);
+  $('Iwiki-title').value='';$('Iwiki-body').value='';
+  renderWikiList('I-wiki-list');
+}
+async function pollWiki(){
+  const arts=await dbGet(KEY_WIKI)||[];
+  wikiArticles=arts;
+  renderWikiList('wiki-list');
+  renderWikiList('I-wiki-list');
+}
+function renderWikiList(elId){
+  const el=$(elId);if(!el)return;
+  const arts=[...wikiArticles].reverse();
+  if(!arts.length){el.innerHTML='<div class="sub">Sin artículos aún.</div>';return;}
+  el.innerHTML=arts.map(a=>`<div class="wiki-item">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:8px">
+      <div style="font-weight:600;font-size:13px">${a.title}</div>
+      <span class="wiki-tag">${a.cat}</span>
+    </div>
+    <div style="font-size:12px;color:var(--tx);line-height:1.6;margin-bottom:6px">${a.body}</div>
+    <div style="font-size:10px;color:var(--tx2);font-family:var(--mono)">${a.author} · ${a.time}</div>
+  </div>`).join('');
+}
+
+// ═══════════════════════════════════
+//  REPORT & PDF
+// ═══════════════════════════════════
+async function submitRpt(){
+  const s=$('r-sum').value.trim(),inc=$('r-inc').value.trim(),rec=$('r-rec').value.trim(),diff=$('r-diff').value;
+  if(!s&&!inc)return;
+  const rpt={name:uname,time:new Date().toLocaleString('es-CO'),s,inc,rec,diff,pts,room:roomId};
+  await dbPush(KEY_REPORTS,rpt,200);
+  mDone.m4=true;chkM();
+  $('r-ok').style.display='block';setTimeout(()=>$('r-ok').style.display='none',3000);
+  pts+=15;$('L-pts').textContent=pts;
+}
+function exportPDF(){
+  if(!window.jspdf){alert('PDF no disponible aún. Espera un momento e intenta de nuevo.');return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const ts=new Date().toLocaleString('es-CO');
+  // Header
+  doc.setFillColor(13,17,23);doc.rect(0,0,210,35,'F');
+  doc.setTextColor(72,187,120);doc.setFontSize(14);doc.setFont(undefined,'bold');
+  doc.text('REPORTE DE TURNO — NOC DATACENTER',14,14);
+  doc.setFontSize(9);doc.setTextColor(180,190,200);
+  doc.text(`Aprendiz: ${uname}  |  Sala: ${roomId}  |  Fecha: ${ts}  |  Puntuación: ${pts} pts`,14,24);
+  // Body
+  doc.setTextColor(0);
+  const secs=[['Resumen del turno',$('r-sum').value||'(sin datos)',44],['Incidentes documentados',$('r-inc').value||'(sin datos)',80],['Recomendaciones',$('r-rec').value||'(sin datos)',125]];
+  secs.forEach(([title,text,y])=>{
+    doc.setFontSize(11);doc.setFont(undefined,'bold');doc.setTextColor(30,40,50);doc.text(title,14,y);
+    doc.setFontSize(9);doc.setFont(undefined,'normal');doc.setTextColor(60,70,80);
+    doc.text(doc.splitTextToSize(text||'—',178),14,y+8);
+  });
+  // Difficulty
+  doc.setFontSize(11);doc.setFont(undefined,'bold');doc.setTextColor(30,40,50);doc.text('Nivel de dificultad',14,165);
+  doc.setFontSize(9);doc.setFont(undefined,'normal');doc.setTextColor(60,70,80);doc.text($('r-diff').value,14,173);
+  // Resolved alerts
+  if(resolvedAlerts.length){
+    doc.setFontSize(11);doc.setFont(undefined,'bold');doc.setTextColor(30,40,50);doc.text('Alertas resueltas',14,185);
+    doc.setFontSize(9);doc.setFont(undefined,'normal');doc.setTextColor(60,70,80);
+    resolvedAlerts.slice(0,8).forEach((a,i)=>doc.text(`• [${a.t.toUpperCase()}] ${a.msg}  (+${a.pts} pts)`,14,193+i*7));
+  }
+  // Footer
+  doc.setDrawColor(200);doc.line(14,280,196,280);
+  doc.setFontSize(8);doc.setTextColor(150);doc.text('Simulador NOC — DataCenter | Generado automáticamente',14,286);
+  doc.save(`reporte-${uname.replace(/\s+/g,'-')}-${Date.now()}.pdf`);
+}
+
+// ═══════════════════════════════════
+//  CHAT
+// ═══════════════════════════════════
+async function sendChat(){
+  const inp=$('L-cinp'),msg=inp.value.trim();if(!msg)return;
+  await dbPush(KEY_CHAT,{name:uname,role:'learner',msg,time:new Date().toLocaleTimeString('es-CO')});
+  inp.value='';await pollChat();
+}
+async function sendIChat(){
+  const inp=$('I-cinp'),msg=inp.value.trim();if(!msg)return;
+  await dbPush(KEY_CHAT,{name:uname,role:'instructor',msg,time:new Date().toLocaleTimeString('es-CO')});
+  inp.value='';await pollIChat();
+}
+async function pollChat(){
+  const msgs=await dbGet(KEY_CHAT)||[];
+  chatMsgs=msgs;rChat('L-cbox');
+  if(msgs.length>lastChatN&&curTab!=='chat')$('L-cdot').style.display='inline-block';
+}
+async function pollIChat(){
+  const msgs=await dbGet(KEY_CHAT)||[];chatMsgs=msgs;rChat('I-cbox');
+}
+function rChat(boxId){
+  const box=$(boxId);if(!box)return;
+  box.innerHTML=chatMsgs.map(m=>{
+    if(m.role==='sys')return `<div class="cm cm-sys">${m.msg}</div>`;
+    const isMe=m.name===uname&&m.role===role;
+    const cls=isMe?'cm-me':(m.role==='instructor'?'cm-inst':'cm-other');
+    return `<div class="cm ${cls}">
+      <div style="font-size:10px;font-weight:700;opacity:.75;margin-bottom:2px">${m.name}${m.role==='instructor'?' ★':''}</div>
+      ${m.msg}<div style="font-size:10px;opacity:.5;margin-top:3px">${m.time}</div>
+    </div>`;
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+// ═══════════════════════════════════
+//  POLL (learner syncs with shared DB)
+// ═══════════════════════════════════
+async function poll(){
+  // Chat
+  await pollChat();
+  // Instructor alerts
+  const ia=await dbGet(KEY_IALERTS)||[];
+  if(ia.length>iAlertsDone){
+    for(let i=iAlertsDone;i<ia.length;i++)pushAlert({...ia[i],src:'inst'});
+    iAlertsDone=ia.length;
+  }
+  // Scenario
+  const sc=await dbGet(KEY_SCENARIO);
+  const badge=$('L-scbadge');
+  if(sc&&sc.active){
+    if(acvScen!==sc.id){
+      acvScen=sc.id;
+      const s=scenarios.find(x=>x.id===sc.id);
+      if(s){s.apply();rSrvs();rNet();}
+      if(badge){badge.textContent='⚠ '+sc.name;badge.style.display='inline';}
+    }
+  }else if(acvScen){
+    acvScen=null;if(badge)badge.style.display='none';
+    // Reset net metrics slowly
+    net[0].v=340;net[2].v=8;net[3].v=0.1;net[4].v=1240;
+  }
+}
+
+// ═══════════════════════════════════
+//  INSTRUCTOR
+// ═══════════════════════════════════
+function initInstructor(){
+  rTriggerBtns();rScenarios();loadRpts();
+  setInterval(pollIChat,3500);
+  setInterval(loadRpts,12000);
+  setInterval(()=>renderWikiList('I-wiki-list'),8000);
+}
+function itab(t,el){
+  document.querySelectorAll('#scr-instructor .sec').forEach(s=>s.classList.remove('on'));
+  $('I-'+t).classList.add('on');
+  document.querySelectorAll('#scr-instructor .tab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  if(t==='rpts')loadRpts();
+  if(t==='icht')pollIChat();
+  if(t==='wiki')pollWiki();
+}
+function rTriggerBtns(){
+  const el=$('I-tbtns');if(!el)return;
+  el.innerHTML=manualAlerts.map((a,i)=>`<button class="btn ${a.t==='crit'?'btn-r':'btn-y'}" onclick="trigAlert(${i})">${a.l}</button>`).join('');
+}
+async function trigAlert(i){
+  const a=manualAlerts[i];
+  await dbPush(KEY_IALERTS,{t:a.t,msg:a.m,pts:a.p,time:new Date().toLocaleTimeString('es-CO')});
+  iLog.unshift({...a,time:new Date().toLocaleTimeString('es-CO')});
+  const tl=$('I-tlog');
+  if(tl)tl.innerHTML=iLog.slice(0,5).map(x=>`<div style="display:flex;justify-content:space-between;padding:5px 10px;font-size:11px;background:var(--s2);border-radius:4px;margin-bottom:4px;font-family:var(--mono)"><span style="color:var(--tx2)">${x.l}</span><span style="color:var(--tx2)">${x.time}</span></div>`).join('');
+}
+
+let curScenId=null;
+function rScenarios(){
+  const el=$('I-slist');if(!el)return;
+  el.innerHTML=scenarios.map((sc,i)=>`<div class="scen-card ${curScenId===sc.id?'scen-on':''}">
+    <div style="display:flex;gap:14px;align-items:flex-start">
+      <span style="font-size:30px;flex-shrink:0">${sc.icon}</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;margin-bottom:3px;display:flex;align-items:center;gap:8px">
+          ${sc.name}
+          ${curScenId===sc.id?'<span class="badge crit" style="animation:pulse 1s infinite">ACTIVO</span>':''}
+        </div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:10px">${sc.desc}</div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);font-family:var(--mono);margin-bottom:4px">QUÉ VEN LOS APRENDICES:</div>
+        ${sc.steps.map(s=>`<div style="font-size:11px;color:var(--tx2);padding:2px 0;font-family:var(--mono)">→ ${s}</div>`).join('')}
+        <div style="font-size:11px;font-weight:600;color:var(--b);font-family:var(--mono);margin:8px 0 4px">PISTAS PARA GUIAR:</div>
+        ${sc.hints.map(h=>`<div style="font-size:11px;color:var(--b);padding:2px 0">• ${h}</div>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      ${curScenId===sc.id
+        ?`<button class="btn" onclick="stopScen()">Detener escenario</button>`
+        :`<button class="btn btn-r" onclick="launchScen(${i})" ${curScenId?'disabled':''}>Activar escenario</button>`}
+    </div>
+  </div>`).join('');
+}
+async function launchScen(i){
+  const sc=scenarios[i];curScenId=sc.id;
+  await dbSet(KEY_SCENARIO,{active:true,id:sc.id,name:sc.name,ts:Date.now()});
+  await dbPush(KEY_CHAT,{name:'Sistema',role:'sys',msg:`⚠ Escenario activado: ${sc.name}`,time:new Date().toLocaleTimeString('es-CO')});
+  rScenarios();$('I-scen-active').textContent='ESCENARIO ACTIVO: '+sc.name;$('I-scen-active').style.display='inline';
+}
+async function stopScen(){
+  curScenId=null;
+  await dbSet(KEY_SCENARIO,{active:false});
+  await dbPush(KEY_CHAT,{name:'Sistema',role:'sys',msg:'Escenario finalizado. Sistema volviendo a modo normal.',time:new Date().toLocaleTimeString('es-CO')});
+  rScenarios();$('I-scen-active').style.display='none';
+}
+async function loadRpts(){
+  const rpts=await dbGet(KEY_REPORTS)||[];
+  const el=$('I-rlist');if(!el)return;
+  const cnt=$('I-rcnt');if(cnt&&rpts.length){cnt.textContent=rpts.length;cnt.style.display='inline';}
+  if(!rpts.length){el.innerHTML='<div class="sub">Sin reportes aún.</div>';return;}
+  el.innerHTML=[...rpts].reverse().map(r=>`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div style="font-weight:700;font-size:13px">${r.name}</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="badge info">${r.diff||'—'}</span>
+        <span class="badge ok">${r.pts} pts</span>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--tx2);font-family:var(--mono);margin-bottom:8px">${r.time} · Sala ${r.room}</div>
+    ${r.s?`<div style="font-size:12px;margin-bottom:4px"><span style="color:var(--tx2)">Resumen: </span>${r.s}</div>`:''}
+    ${r.inc?`<div style="font-size:12px;margin-bottom:4px"><span style="color:var(--tx2)">Incidentes: </span>${r.inc}</div>`:''}
+    ${r.rec?`<div style="font-size:12px"><span style="color:var(--tx2)">Recomendaciones: </span>${r.rec}</div>`:''}
+  </div>`).join('');
+}
+
+// ═══════════════════════════════════
+//  LEARNER INIT
+// ═══════════════════════════════════
+function initLearner(){
+  rSrvs();rNet();rAlerts();rMissions();updSum();
+  setInterval(fluctuate,2500);
+  setInterval(()=>{if(activeAlerts.length<8)autoAlert();},9000);
+  setTimeout(autoAlert,2000);setTimeout(autoAlert,5000);
+  setInterval(poll,3500);
+  // BroadcastChannel for demo multi-tab
+  try{
+    const bc=new BroadcastChannel(`noc_${roomId}`);
+    bc.onmessage=()=>poll();
+  }catch{}
+}
+
+// ═══════════════════════════════════
+//  MISSION: mark m1 when user clicks dashboard
+// ═══════════════════════════════════
+document.addEventListener('click',e=>{
+  if(e.target.closest('#L-srvgrid')&&!mDone.m1){mDone.m1=true;chkM();}
+});
+</script>
+</body>
+</html>
